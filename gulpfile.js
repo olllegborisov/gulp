@@ -1,4 +1,4 @@
-const { src, dest, watch, parallel } = require('gulp');
+const { src, dest, watch, parallel, series } = require('gulp');
 
 
 const scss = require('gulp-sass')(require('sass')); // конвертирует scss в css (сжимает css:   outputStyle: 'compressed')
@@ -6,6 +6,9 @@ const concat = require('gulp-concat'); // соединение строк
 const uglify = require('gulp-uglify-es').default; // сжимает js
 const browserSync = require('browser-sync').create(); // открывает страницу локально, обновляет
 const autoprefixer = require('gulp-autoprefixer');// добавляет префиксы. (overrideBrowserslist: ['last 10 version']) — указывает количество версий на которых будет действовать автопрефиксер
+const clean = require('gulp-clean');
+const webp = require('gulp-webp');
+
 
 function scripts() {
     return src([
@@ -30,6 +33,12 @@ function styles() {
         .pipe(browserSync.stream());
 }
 
+function conversion() {
+    return src('app/images/*.*')
+        .pipe(webp())
+        .pipe(dest('dist/images'))
+}
+
 function watching() { // следит за изменениями в каждом из файлов ниже
     watch(['app/scss/style.scss'], styles)
     watch(['app/js/main.js'], scripts)
@@ -46,11 +55,26 @@ function browsersync() {
     });
 }
 
+function cleanDist() { // удаляет файлы в дисте перед билдингом
+    return src('dist')
+        .pipe(clean())
+}
+
+function building() {
+    return src([
+        'app/css/style.min.css',
+        'app/js/main.min.js',
+        'app/**/*.html'
+    ], { base: 'app' }) //сохраняет структуру
+        .pipe(dest('dist'))
+}
+
 exports.scripts = scripts;
 exports.styles = styles;
 exports.watching = watching;
 exports.browsersync = browsersync;
 
-exports.default = parallel(styles, scripts, browsersync, watching)
+exports.build = series(cleanDist, building)
+exports.default = parallel(styles, scripts, conversion, browsersync, watching)
 
 
